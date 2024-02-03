@@ -151,20 +151,13 @@ Message pad(uint64_t l)
 // then each of the intermediate digests produced when processing each
 // block.
 Schedule schedule(const Block& M) {
-    Schedule W = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-                  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-                  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-                  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
+    Schedule W;
 
-    int t = 0;
-    do {
-        W[t] = M[t];
-        t++;
-    } while (t < 16);
-    do {
+    // Copy the first 16 elements from M to W
+    std::ranges::copy(M, W.begin());
+    for (int t = 16; t < 64; ++t) {
         W[t] = sigma_4_7(W[t - 2]) + W[t - 7] + sigma_4_6(W[t - 15]) + W[t - 16];
-        t++;
-    } while (t < 64);
+    }
 
     return W;
 }
