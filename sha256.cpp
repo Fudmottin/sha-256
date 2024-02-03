@@ -134,7 +134,8 @@ Message pad(uint64_t l)
     // reinterpret_cast to treat the integer as an array of bytes
     auto bytes = reinterpret_cast<unsigned char*>(&l);
 
-    // Reverse the byte order and add to the vector
+    // Reverse the byte order and add to the vector.
+    // This is required for little endian architectures like x86 and ARM
     for (int i = sizeof(l) - 1; i >= 0; --i)
     {
         padding.push_back(bytes[i]);
@@ -155,6 +156,7 @@ Schedule schedule(const Block& M) {
 
     // Copy the first 16 elements from M to W
     std::ranges::copy(M, W.begin());
+    // Complete the schedule
     for (int t = 16; t < 64; ++t) {
         W[t] = sigma_4_7(W[t - 2]) + W[t - 7] + sigma_4_6(W[t - 15]) + W[t - 16];
     }
