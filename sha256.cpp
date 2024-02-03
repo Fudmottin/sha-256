@@ -27,9 +27,9 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
-#include "Word.h"
 
 // Type aliases to match the wording in the NIST.FIPS.180-4 SHA-256 specification.
+using Word = uint32_t;
 using SHA256_Constants = const std::array<Word, 64>;
 using Digest = std::array<Word, 8>;
 using Message = std::vector<unsigned char>;
@@ -92,10 +92,10 @@ inline Word Maj(const Word& x, const Word& y, const Word& z) { return (x & y) ^ 
 // They are used as part of generating a message schedule from a block of input
 // data when calculating a SHA-256 hash. The suffixes are the part of the
 // specification that defines each sigma function.
-inline Word sigma_4_4(const Word& x) { return x.rotr(2) ^ x.rotr(13) ^ x.rotr(22); } // 4.4
-inline Word sigma_4_5(const Word& x) { return x.rotr(6) ^ x.rotr(11) ^ x.rotr(25); } // 4.5
-inline Word sigma_4_6(const Word& x) { return x.rotr(7) ^ x.rotr(18) ^ (x >> 3); }   // 4.6
-inline Word sigma_4_7(const Word& x) { return x.rotr(17) ^ x.rotr(19) ^ (x >> 10); } // 4.7
+inline Word sigma_4_4(const Word& x) { return std::rotr(x, 2) ^ std::rotr(x, 13) ^ std::rotr(x, 22); } // 4.4
+inline Word sigma_4_5(const Word& x) { return std::rotr(x, 6) ^ std::rotr(x, 11) ^ std::rotr(x, 25); } // 4.5
+inline Word sigma_4_6(const Word& x) { return std::rotr(x, 7) ^ std::rotr(x, 18) ^ (x >> 3); }         // 4.6
+inline Word sigma_4_7(const Word& x) { return std::rotr(x, 17) ^ std::rotr(x, 19) ^ (x >> 10); }       // 4.7
 
 // 5.1 Padding The Message: The purpose of this padding is to ensure that the
 // padded message is a multiple of 512 bits. Padding can be inserted before hash
@@ -152,7 +152,7 @@ Message pad(uint64_t l)
 // then each of the intermediate digests produced when processing each
 // block.
 Schedule schedule(const Block& M) {
-    Schedule W;
+    Schedule W = {};
 
     // Copy the first 16 elements from M to W
     std::ranges::copy(M, W.begin());
@@ -178,14 +178,14 @@ Digest runschedule(const Schedule& W, Digest& H) {
         b = a; a = T1 + T2;
     }
 
-    H[0] = a + H[0];
-    H[1] = b + H[1];
-    H[2] = c + H[2];
-    H[3] = d + H[3];
-    H[4] = e + H[4];
-    H[5] = f + H[5];
-    H[6] = g + H[6];
-    H[7] = h + H[7];
+    H[0] += a;
+    H[1] += b;
+    H[2] += c;
+    H[3] += d;
+    H[4] += e;
+    H[5] += f;
+    H[6] += g;
+    H[7] += h;
 
     return H;
 }
@@ -210,8 +210,8 @@ Digest message(Message& msg) {
     // Parse the message 64 bytes at a time and process each block.
     int i = 0, j = 0;
     do {
-        Block B;
-        Word w;
+        Block B = {};
+        Word w = 0;
 
         do {
             const unsigned char a = msg[i++];
@@ -241,7 +241,7 @@ Digest hashDigest(const Digest& d) {
     Digest digest = H0;
     const Digest startPad = { 0x80000000,0x00000000,0x00000000,0x00000000,
                         0x00000000,0x00000000,0x00000000,0x00000200 };
-    Block B;
+    Block B = {};
 
     int i = 0;
     for (const auto w : d) B[i++] = w;
@@ -285,7 +285,6 @@ int main(const int argc, char* argv[]) {
         }
 
         Message msg = {};
-        msg.reserve(1024);
 
         bool doublehash = false;
         for (const auto& file : args)
