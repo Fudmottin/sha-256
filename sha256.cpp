@@ -297,6 +297,12 @@ int main(const int argc, char* argv[]) {
 
             std::ifstream infile(file, std::ios::binary);
             infile.seekg(0, std::ios::end);
+            
+            if (!infile) {
+                std::cerr << "Failed to open file: " << file << "\n";
+                continue;
+            }
+
             size_t fileSize = infile.tellg();
 
             msg.resize(fileSize);
