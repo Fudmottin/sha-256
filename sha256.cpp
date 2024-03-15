@@ -105,26 +105,19 @@ Message pad(uint64_t l)
 {
     Message padding = { 0x80 };
 
-    if (l == 0)
-    {
+    if (l == 0) {
         // A zero length message is an edge case, but it has to be dealt with.
         padding.resize(56, 0);
-    }
-    else if (l % 512 == 0)
-    {
+    } else if (l % 512 == 0) {
         // This is our favorite case. The message is already a multiple of 512
         // bits in length.
         return padding = {};
-    }
-    else if (l % 512 > 440)
-    {
+    } else if (l % 512 > 440) {
         // This is an annoying case. The message requires padding and adding an
         // extra 512 bit block to the end. Pad remainder of block and add new block
         const int k = 960 - (l % 1024 + 1);
         padding.resize(k / 8 + 1, 0);
-    }
-    else
-    {
+    } else {
         // This is a typical case. We add a 1 bit and zeros plus the length
         // of the message in bits.
         const int k = 448 - (l % 512 + 1);
@@ -137,9 +130,7 @@ Message pad(uint64_t l)
     // Reverse the byte order and add to the vector.
     // This is required for little endian architectures like x86 and ARM
     for (int i = sizeof(l) - 1; i >= 0; --i)
-    {
         padding.push_back(bytes[i]);
-    }
 
     return padding;
 }
@@ -240,7 +231,7 @@ Digest message(Message& msg) {
 Digest hashDigest(const Digest& d) {
     Digest digest = H0;
     const Digest startPad = { 0x80000000,0x00000000,0x00000000,0x00000000,
-                        0x00000000,0x00000000,0x00000000,0x00000200 };
+                              0x00000000,0x00000000,0x00000000,0x00000100 };
     Block B = {};
 
     int i = 0;
@@ -316,10 +307,9 @@ int main(const int argc, char* argv[]) {
             infile.close();
             Digest digest = message(msg);
 
-            if (doublehash)
-            {
+            if (doublehash) {
                 digest = hashDigest(digest);
-                std::cout << " double hashed";
+                std::cout << "Double hashed ";
             }
 
             std::cout << "SHA-256 (" << file << ") = ";
