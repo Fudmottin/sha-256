@@ -278,10 +278,8 @@ int main(const int argc, char* argv[]) {
         Message msg = {};
 
         bool doublehash = false;
-        for (const auto& file : args)
-        {
-            if (file == std::string("-"))
-            {
+        for (const auto& file : args) {
+            if (file == std::string("-")) {
                 doublehash = true;
                 continue;
             }
