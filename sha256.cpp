@@ -103,7 +103,7 @@ inline Word sigma_4_7(const Word& x) { return std::rotr(x, 17) ^ std::rotr(x, 19
 // prior to processing the block(s) that will contain the padding.
 Message pad(uint64_t l)
 {
-    Message padding = { 0x80 };
+    Message padding{ 0x80 };
 
     if (l == 0) {
         // A zero length message is an edge case, but it has to be dealt with.
@@ -131,7 +131,7 @@ Message pad(uint64_t l)
     // This is required for little endian architectures like x86 and ARM
     for (int i = sizeof(l) - 1; i >= 0; --i)
         padding.push_back(bytes[i]);
-
+    
     return padding;
 }
 
@@ -275,7 +275,7 @@ int main(const int argc, char* argv[]) {
             return 0;
         }
 
-        Message msg = {};
+        Message msg{};
 
         bool doublehash = false;
         for (const auto& file : args) {
@@ -315,13 +315,16 @@ int main(const int argc, char* argv[]) {
                 std::cout << std::setw(8) << std::setfill('0') << std::hex << w;
             std::cout << std::endl;
 
-            msg = {};
+            msg.clear();
         }
     }
     // Honestly if we catch an error, there is a bug somewhere in the
     // code that I have not caught. Pun intended.
     catch (std::out_of_range) {
         std::cerr << "range error" << std::endl;
+    }
+    catch (std::exception const &e) {
+        std::cerr << e.what() << std::endl;
     }
     catch (...) {
         std::cerr << "unknown exception thrown" << std::endl;
