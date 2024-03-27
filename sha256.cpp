@@ -80,22 +80,22 @@ static const Digest H0 = {
 // The 'Ch' function: This is short for "choose" and given three inputs x, y, z
 // returns bits from y where the corresponding bit in x is 1 and bits from z
 // where the corresponding bit in x is 0.
-inline Word Ch(const Word& x, const Word& y, const Word& z) { return (x & y) ^ ((~x) & z); }            // 4.2
+constexpr Word Ch(const Word& x, const Word& y, const Word& z) { return (x & y) ^ ((~x) & z); }            // 4.2
 
 // The 'Maj' function: Short for "majority", this function takes three inputs
 // x, y, z and for each bit index i if at least two of the bits xi, yi or zi
 // are set to 1 then so is the result mi.
-inline Word Maj(const Word& x, const Word& y, const Word& z) { return (x & y) ^ (x & z) ^ (y & z); }    // 4.3
+constexpr Word Maj(const Word& x, const Word& y, const Word& z) { return (x & y) ^ (x & z) ^ (y & z); }    // 4.3
 
 // The sigma functions: These are defined as bitwise operations on their input
 // word according to specific rules outlined in section 4 of NIST.FIPS.180-4.
 // They are used as part of generating a message schedule from a block of input
 // data when calculating a SHA-256 hash. The suffixes are the part of the
 // specification that defines each sigma function.
-inline Word sigma_4_4(const Word& x) { return std::rotr(x, 2) ^ std::rotr(x, 13) ^ std::rotr(x, 22); } // 4.4
-inline Word sigma_4_5(const Word& x) { return std::rotr(x, 6) ^ std::rotr(x, 11) ^ std::rotr(x, 25); } // 4.5
-inline Word sigma_4_6(const Word& x) { return std::rotr(x, 7) ^ std::rotr(x, 18) ^ (x >> 3); }         // 4.6
-inline Word sigma_4_7(const Word& x) { return std::rotr(x, 17) ^ std::rotr(x, 19) ^ (x >> 10); }       // 4.7
+constexpr Word sigma_4_4(const Word& x) { return std::rotr(x, 2) ^ std::rotr(x, 13) ^ std::rotr(x, 22); } // 4.4
+constexpr Word sigma_4_5(const Word& x) { return std::rotr(x, 6) ^ std::rotr(x, 11) ^ std::rotr(x, 25); } // 4.5
+constexpr Word sigma_4_6(const Word& x) { return std::rotr(x, 7) ^ std::rotr(x, 18) ^ (x >> 3); }         // 4.6
+constexpr Word sigma_4_7(const Word& x) { return std::rotr(x, 17) ^ std::rotr(x, 19) ^ (x >> 10); }       // 4.7
 
 // 5.1 Padding The Message: The purpose of this padding is to ensure that the
 // padded message is a multiple of 512 bits. Padding can be inserted before hash
