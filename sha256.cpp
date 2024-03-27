@@ -320,11 +320,11 @@ int main(const int argc, char* argv[]) {
     }
     // Honestly if we catch an error, there is a bug somewhere in the
     // code that I have not caught. Pun intended.
-    catch (std::out_of_range) {
-        std::cerr << "range error" << std::endl;
+    catch (const std::out_of_range& e) {
+        std::cerr << "range error: " << e.what() << std::endl;
     }
-    catch (std::exception const &e) {
-        std::cerr << e.what() << std::endl;
+    catch (const std::exception& e) {
+        std::cerr << "std::excepton: " << e.what() << std::endl;
     }
     catch (...) {
         std::cerr << "unknown exception thrown" << std::endl;
