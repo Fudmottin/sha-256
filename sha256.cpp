@@ -112,10 +112,10 @@ Message pad(uint64_t l)
         // This is our favorite case. The message is already a multiple of 512
         // bits in length.
         return padding = {};
-    } else if (l % 512 > 440) {
+    } else if (l % 512 > 448) {
         // This is an annoying case. The message requires padding and adding an
         // extra 512 bit block to the end. Pad remainder of block and add new block
-        const int k = 960 - (l % 1024 + 1);
+        const int k = 960 - (l % 512 + 1);
         padding.resize(k / 8 + 1, 0);
     } else {
         // This is a typical case. We add a 1 bit and zeros plus the length
@@ -301,8 +301,8 @@ int main(const int argc, char* argv[]) {
 
             // Read the entire file into the vector
             infile.read(reinterpret_cast<char*>(msg.data()), fileSize);
-
             infile.close();
+
             Digest digest = message(msg);
 
             if (doublehash) {
