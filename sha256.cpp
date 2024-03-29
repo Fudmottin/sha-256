@@ -27,6 +27,7 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include <bit>
 
 // Type aliases to match the wording in the NIST.FIPS.180-4 SHA-256 specification.
 using Word = uint32_t;
