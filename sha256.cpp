@@ -81,58 +81,49 @@ static const Digest H0 = {
 // The 'Ch' function: This is short for "choose" and given three inputs x, y, z
 // returns bits from y where the corresponding bit in x is 1 and bits from z
 // where the corresponding bit in x is 0.
-constexpr Word Ch(const Word& x, const Word& y, const Word& z) { return (x & y) ^ ((~x) & z); }            // 4.2
+constexpr Word Ch(Word x, Word y, Word z) { return (x & y) ^ ((~x) & z); }                         // 4.2
 
 // The 'Maj' function: Short for "majority", this function takes three inputs
 // x, y, z and for each bit index i if at least two of the bits xi, yi or zi
 // are set to 1 then so is the result mi.
-constexpr Word Maj(const Word& x, const Word& y, const Word& z) { return (x & y) ^ (x & z) ^ (y & z); }    // 4.3
+constexpr Word Maj(Word x, Word y, Word z) { return (x & y) ^ (x & z) ^ (y & z); }                 // 4.3
 
 // The sigma functions: These are defined as bitwise operations on their input
 // word according to specific rules outlined in section 4 of NIST.FIPS.180-4.
 // They are used as part of generating a message schedule from a block of input
 // data when calculating a SHA-256 hash. The suffixes are the part of the
 // specification that defines each sigma function.
-constexpr Word sigma_4_4(const Word& x) { return std::rotr(x, 2) ^ std::rotr(x, 13) ^ std::rotr(x, 22); } // 4.4
-constexpr Word sigma_4_5(const Word& x) { return std::rotr(x, 6) ^ std::rotr(x, 11) ^ std::rotr(x, 25); } // 4.5
-constexpr Word sigma_4_6(const Word& x) { return std::rotr(x, 7) ^ std::rotr(x, 18) ^ (x >> 3); }         // 4.6
-constexpr Word sigma_4_7(const Word& x) { return std::rotr(x, 17) ^ std::rotr(x, 19) ^ (x >> 10); }       // 4.7
+constexpr Word sigma_4_4(Word x) { return std::rotr(x, 2) ^ std::rotr(x, 13) ^ std::rotr(x, 22); } // 4.4
+constexpr Word sigma_4_5(Word x) { return std::rotr(x, 6) ^ std::rotr(x, 11) ^ std::rotr(x, 25); } // 4.5
+constexpr Word sigma_4_6(Word x) { return std::rotr(x, 7) ^ std::rotr(x, 18) ^ (x >> 3); }         // 4.6
+constexpr Word sigma_4_7(Word x) { return std::rotr(x, 17) ^ std::rotr(x, 19) ^ (x >> 10); }       // 4.7
 
 // 5.1 Padding The Message: The purpose of this padding is to ensure that the
 // padded message is a multiple of 512 bits. Padding can be inserted before hash
 // computation begins on a message, or at any other time during the hash computation
 // prior to processing the block(s) that will contain the padding.
+// l is message length in bits
 Message pad(uint64_t l)
 {
-    Message padding{ 0x80 };
+    const size_t mbytes = static_cast<size_t>(l / 8); // message length in bytes
+    // number of zero bytes to append after the initial 0x80 so that
+    // (mbytes + 1 + pad_zero_bytes) % 64 == 56
+    const size_t pad_zero_bytes = (56 + 64 - ((mbytes + 1) % 64)) % 64;
 
-    if (l == 0) {
-        // A zero length message is an edge case, but it has to be dealt with.
-        padding.resize(56, 0);
-    } else if (l % 512 == 0) {
-        // This is our favorite case. The message is already a multiple of 512
-        // bits in length.
-        return padding = {};
-    } else if (l % 512 > 448) {
-        // This is an annoying case. The message requires padding and adding an
-        // extra 512 bit block to the end. Pad remainder of block and add new block
-        const int k = 960 - (l % 512 + 1);
-        padding.resize(k / 8 + 1, 0);
-    } else {
-        // This is a typical case. We add a 1 bit and zeros plus the length
-        // of the message in bits.
-        const int k = 448 - (l % 512 + 1);
-        padding.resize(k / 8 + 1, 0);
+    Message padding;
+    padding.reserve(1 + pad_zero_bytes + 8);
+
+    // 1) append single 1 bit as 0x80
+    padding.push_back(0x80);
+
+    // 2) append pad_zero_bytes of 0x00
+    padding.insert(padding.end(), pad_zero_bytes, 0x00);
+
+    // 3) append 64-bit big-endian length (l is already in bits)
+    for (int i = 7; i >= 0; --i) {
+        padding.push_back(static_cast<unsigned char>((l >> (8 * i)) & 0xFF));
     }
 
-    // reinterpret_cast to treat the integer as an array of bytes
-    auto bytes = reinterpret_cast<unsigned char*>(&l);
-
-    // Reverse the byte order and add to the vector.
-    // This is required for little endian architectures like x86 and ARM
-    for (int i = sizeof(l) - 1; i >= 0; --i)
-        padding.push_back(bytes[i]);
-    
     return padding;
 }
 
