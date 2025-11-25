@@ -180,6 +180,17 @@ Digest runschedule(const Schedule& W, Digest& H) {
 // also affect how the padding is done as it has to tack data
 // onto the end of the message so that it is an integer multiple
 // of 512 bits (16 words).
+
+// Helper to read bytes in big-endian order and properly place them
+// in little-endian Words
+static inline constexpr Word read_be32(const unsigned char* p) noexcept
+{
+    return (Word(p[0]) << 24) |
+           (Word(p[1]) << 16) |
+           (Word(p[2]) <<  8) |
+           (Word(p[3]));
+}
+
 Digest message(Message& msg) {
     uint64_t  messagelength = msg.size() * 8;
     Digest digest = H0; // The initial digest value is set.
@@ -191,29 +202,16 @@ Digest message(Message& msg) {
     std::ranges::copy(padding, std::back_inserter(msg));
 
     // Parse the message 64 bytes at a time and process each block.
-    int i = 0, j = 0;
-    do {
-        Block B = {};
-        Word w = 0;
+    for (size_t b = 0; b < msg.size(); b += 64) {
+        Block B{};
 
-        do {
-            const unsigned char a = msg[i++];
-            const unsigned char b = msg[i++];
-            const unsigned char c = msg[i++];
-            const unsigned char d = msg[i++];
-            w = w | a; w <<= 8;
-            w = w | b; w <<= 8;
-            w = w | c; w <<= 8;
-            w = w | d;
-            B[j] = w;
-            w = 0;
-            j++;
-        } while (j < 16);
+        for (size_t j = 0; j < 16; ++j) {
+            B[j] = read_be32(&msg[b + j * 4]);
+        }
 
-        Schedule s = schedule(B);
+        const Schedule s = schedule(B);
         digest = runschedule(s, digest);
-        j = 0;
-    } while (i < msg.size());
+    }
 
     return digest;
 }
