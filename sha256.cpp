@@ -21,15 +21,16 @@
  *                                                                             *
  ******************************************************************************/
 
-#include <vector>
 #include <array>
-#include <string>
-#include <iostream>
-#include <iomanip>
-#include <fstream>
 #include <bit>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <string>
+#include <vector>
 
-// Type aliases to match the wording in the NIST.FIPS.180-4 SHA-256 specification.
+// Type aliases to match the wording in the NIST.FIPS.180-4 SHA-256
+// specification.
 using Word = uint32_t;
 using SHA256_Constants = const std::array<Word, 64>;
 using Digest = std::array<Word, 8>;
@@ -44,33 +45,27 @@ using Schedule = std::array<Word, 64>;
 // words are (from left to right)
 
 static const SHA256_Constants K = {
-    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,
-    0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
-    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,
-    0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
-    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,
-    0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
-    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,
-    0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
-    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,
-    0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
-    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,
-    0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
-    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,
-    0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
-    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,
-    0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2 };
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
+    0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
+    0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786,
+    0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147,
+    0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+    0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
+    0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a,
+    0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+    0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2};
 
 // Section 5.3.3 SHA-256
 //
-// For SHA-256, the initial hash value, H(0), shall consist of the following 
+// For SHA-256, the initial hash value, H(0), shall consist of the following
 // eight 32-bit words, in hex. These words were obtained by taking the first
 // thirty-two bits of the fractional parts of the square roots of the first
 // eight prime numbers.
 
-static const Digest H0 = {
-    0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,
-    0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19 };
+static const Digest H0 = {0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+                          0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19};
 
 // Section 4.1.2 SHA-256 Functions
 //
@@ -81,30 +76,41 @@ static const Digest H0 = {
 // The 'Ch' function: This is short for "choose" and given three inputs x, y, z
 // returns bits from y where the corresponding bit in x is 1 and bits from z
 // where the corresponding bit in x is 0.
-constexpr Word Ch(Word x, Word y, Word z) { return (x & y) ^ ((~x) & z); }                         // 4.2
+constexpr Word Ch(Word x, Word y, Word z) {
+    return (x & y) ^ ((~x) & z);
+} // 4.2
 
 // The 'Maj' function: Short for "majority", this function takes three inputs
 // x, y, z and for each bit index i if at least two of the bits xi, yi or zi
 // are set to 1 then so is the result mi.
-constexpr Word Maj(Word x, Word y, Word z) { return (x & y) ^ (x & z) ^ (y & z); }                 // 4.3
+constexpr Word Maj(Word x, Word y, Word z) {
+    return (x & y) ^ (x & z) ^ (y & z);
+} // 4.3
 
 // The sigma functions: These are defined as bitwise operations on their input
 // word according to specific rules outlined in section 4 of NIST.FIPS.180-4.
 // They are used as part of generating a message schedule from a block of input
 // data when calculating a SHA-256 hash. The suffixes are the part of the
 // specification that defines each sigma function.
-constexpr Word sigma_4_4(Word x) { return std::rotr(x, 2) ^ std::rotr(x, 13) ^ std::rotr(x, 22); } // 4.4
-constexpr Word sigma_4_5(Word x) { return std::rotr(x, 6) ^ std::rotr(x, 11) ^ std::rotr(x, 25); } // 4.5
-constexpr Word sigma_4_6(Word x) { return std::rotr(x, 7) ^ std::rotr(x, 18) ^ (x >> 3); }         // 4.6
-constexpr Word sigma_4_7(Word x) { return std::rotr(x, 17) ^ std::rotr(x, 19) ^ (x >> 10); }       // 4.7
+constexpr Word sigma_4_4(Word x) {
+    return std::rotr(x, 2) ^ std::rotr(x, 13) ^ std::rotr(x, 22);
+} // 4.4
+constexpr Word sigma_4_5(Word x) {
+    return std::rotr(x, 6) ^ std::rotr(x, 11) ^ std::rotr(x, 25);
+} // 4.5
+constexpr Word sigma_4_6(Word x) {
+    return std::rotr(x, 7) ^ std::rotr(x, 18) ^ (x >> 3);
+} // 4.6
+constexpr Word sigma_4_7(Word x) {
+    return std::rotr(x, 17) ^ std::rotr(x, 19) ^ (x >> 10);
+} // 4.7
 
 // 5.1 Padding The Message: The purpose of this padding is to ensure that the
 // padded message is a multiple of 512 bits. Padding can be inserted before hash
-// computation begins on a message, or at any other time during the hash computation
-// prior to processing the block(s) that will contain the padding.
+// computation begins on a message, or at any other time during the hash
+// computation prior to processing the block(s) that will contain the padding.
 // l is message length in bits
-Message pad(uint64_t l)
-{
+Message pad(uint64_t l) {
     const size_t mbytes = static_cast<size_t>(l / 8); // message length in bytes
     // number of zero bytes to append after the initial 0x80 so that
     // (mbytes + 1 + pad_zero_bytes) % 64 == 56
@@ -141,7 +147,8 @@ Schedule schedule(const Block& M) {
     std::ranges::copy(M, W.begin());
     // Complete the schedule
     for (int t = 16; t < 64; ++t) {
-        W[t] = sigma_4_7(W[t - 2]) + W[t - 7] + sigma_4_6(W[t - 15]) + W[t - 16];
+        W[t] =
+            sigma_4_7(W[t - 2]) + W[t - 7] + sigma_4_6(W[t - 15]) + W[t - 16];
     }
 
     return W;
@@ -151,14 +158,19 @@ Schedule schedule(const Block& M) {
 // Run the message schedule. This does the work of producing the next
 // digest value from the current digest.
 Digest runschedule(const Schedule& W, Digest& H) {
-    Word a(H[0]), b(H[1]), c(H[2]), d(H[3]),
-        e(H[4]), f(H[5]), g(H[6]), h(H[7]);
+    Word a(H[0]), b(H[1]), c(H[2]), d(H[3]), e(H[4]), f(H[5]), g(H[6]), h(H[7]);
 
     for (int t = 0; t < 64; t++) {
         Word T1(h + sigma_4_5(e) + Ch(e, f, g) + K[t] + W[t]);
         Word T2(sigma_4_4(a) + Maj(a, b, c));
-        h = g; g = f; f = e; e = d + T1; d = c; c = b;
-        b = a; a = T1 + T2;
+        h = g;
+        g = f;
+        f = e;
+        e = d + T1;
+        d = c;
+        c = b;
+        b = a;
+        a = T1 + T2;
     }
 
     H[0] += a;
@@ -183,16 +195,13 @@ Digest runschedule(const Schedule& W, Digest& H) {
 
 // Helper to read bytes in big-endian order and properly place them
 // in little-endian Words
-static inline constexpr Word read_be32(const unsigned char* p) noexcept
-{
-    return (Word(p[0]) << 24) |
-           (Word(p[1]) << 16) |
-           (Word(p[2]) <<  8) |
+static inline constexpr Word read_be32(const unsigned char* p) noexcept {
+    return (Word(p[0]) << 24) | (Word(p[1]) << 16) | (Word(p[2]) << 8) |
            (Word(p[3]));
 }
 
 Digest message(Message& msg) {
-    uint64_t  messagelength = msg.size() * 8;
+    uint64_t messagelength = msg.size() * 8;
     Digest digest = H0; // The initial digest value is set.
 
     // The message padding is calculated and stored.
@@ -220,8 +229,8 @@ Digest message(Message& msg) {
 // Since digests are a fixed 256 bit length, we already know the padding.
 Digest hashDigest(const Digest& d) {
     Digest digest = H0;
-    const Digest startPad = { 0x80000000,0x00000000,0x00000000,0x00000000,
-                              0x00000000,0x00000000,0x00000000,0x00000100 };
+    const Digest startPad = {0x80000000, 0x00000000, 0x00000000, 0x00000000,
+                             0x00000000, 0x00000000, 0x00000000, 0x00000100};
     Block B = {};
 
     int i = 0;
@@ -237,8 +246,7 @@ Digest hashDigest(const Digest& d) {
 std::vector<std::string> arguments(const int argc, char* argv[]) {
     std::vector<std::string> res;
 
-    for (int i = 1; i < argc; i++)
-        res.emplace_back(argv[i]);
+    for (int i = 1; i < argc; i++) res.emplace_back(argv[i]);
 
     return res;
 }
@@ -254,14 +262,15 @@ int main(const int argc, char* argv[]) {
         const std::vector<std::string> args = arguments(argc, argv);
 
         if (argc == 1) {
-            std::cout << "SHA-256 algorithm for educational purposes only!\n"
-                      << "$ sha256 [-] file1 [file2 ...]\n\n"
-                      << "Reads each file and provides a SHA-256 digest.\n"
-                      << "The - argument can appear anywhere in the argument\n"
-                      << "list. Files appearing after the - will be double hashed.\n"
-                      << "Bitcoin does this sha256(sha256(data)).\n"
-                      << "The output is a text hex representation of the "
-                      << "SHA-256 message digest.\n";
+            std::cout
+                << "SHA-256 algorithm for educational purposes only!\n"
+                << "$ sha256 [-] file1 [file2 ...]\n\n"
+                << "Reads each file and provides a SHA-256 digest.\n"
+                << "The - argument can appear anywhere in the argument\n"
+                << "list. Files appearing after the - will be double hashed.\n"
+                << "Bitcoin does this sha256(sha256(data)).\n"
+                << "The output is a text hex representation of the "
+                << "SHA-256 message digest.\n";
             return 0;
         }
 
@@ -275,7 +284,7 @@ int main(const int argc, char* argv[]) {
             }
 
             std::ifstream infile(file, std::ios::binary);
-            
+
             if (!infile) {
                 std::cerr << "Failed to open file: " << file << "\n";
                 continue;
@@ -312,14 +321,11 @@ int main(const int argc, char* argv[]) {
     // code that I have not caught. Pun intended.
     catch (const std::out_of_range& e) {
         std::cerr << "range error: " << e.what() << std::endl;
-    }
-    catch (const std::exception& e) {
+    } catch (const std::exception& e) {
         std::cerr << "std::excepton: " << e.what() << std::endl;
-    }
-    catch (...) {
+    } catch (...) {
         std::cerr << "unknown exception thrown" << std::endl;
     }
 
     return 0;
 }
-
