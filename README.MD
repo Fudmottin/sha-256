@@ -23,3 +23,17 @@ c++ -std=c++20 -O3 -o sha256 sha256.cpp
 
 This software is placed into the public domain by the author.
 
+# uint256
+
+This is just me playing around with creating my own 256 bit unsigned integer
+type. I'm also placing it in the public domain. There are certainly better
+implementations such as in Boost::multiprecision. If you wish to play with
+it, feel free. I wouldn't use it in production though. The code consists of
+a header only implementation and a test `main256.cpp` file.
+
+To compile it, I've been using:
+
+```
+c++ --std=c++23 -O3 -Wall -Wextra -Wpedantic -Werror -o main256 main256.cpp
+```
+
