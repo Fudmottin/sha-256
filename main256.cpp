@@ -306,6 +306,64 @@ void test_literal_and_bitset() {
    std::cout << "ok\n";
 }
 
+void test_bit_queries() {
+   print_banner("bit queries (<bit> vocabulary)");
+
+   // zero
+   {
+      const uint256 z{0};
+      assert(z.popcount() == 0u);
+      assert(z.countl_zero() == 256u);
+      assert(z.countr_zero() == 256u);
+      assert(z.bit_width() == 0u);
+      assert(z.msb_index() == -1);
+   }
+
+   // one
+   {
+      const uint256 o{1};
+      assert(o.popcount() == 1u);
+      assert(o.countl_zero() == 255u);
+      assert(o.countr_zero() == 0u);
+      assert(o.bit_width() == 1u);
+      assert(o.msb_index() == 0);
+   }
+
+   // powers of two
+   for (unsigned k : {0u, 1u, 63u, 64u, 65u, 127u, 128u, 129u, 200u, 255u}) {
+      const uint256 x = pow2(k);
+      assert(x.popcount() == 1u);
+      assert(x.countr_zero() == static_cast<std::uint32_t>(k));
+      assert(x.bit_width() == static_cast<std::uint32_t>(k + 1u));
+      assert(x.msb_index() == static_cast<std::int32_t>(k));
+   }
+
+   // mixed bits: build using public ops only
+   {
+      const uint256 x = (uint256{1} << 0) | (uint256{1} << 5) | (uint256{1} << 200);
+
+      assert(x.popcount() == 3u);
+      assert(x.countr_zero() == 0u);
+      assert(x.bit_width() == 201u);
+      assert(x.msb_index() == 200);
+   }
+
+   // all ones
+   {
+      uint256 x{};
+      for (std::size_t i = 0; i < uint256::size(); ++i) {
+         x.data()[i] = ~std::uint64_t{0};
+      }
+      assert(x.popcount() == 256u);
+      assert(x.countl_zero() == 0u);
+      assert(x.countr_zero() == 0u);
+      assert(x.bit_width() == 256u);
+      assert(x.msb_index() == 255);
+   }
+
+   std::cout << "ok\n";
+}
+
 // ---- randomized/property tests ----
 
 struct splitmix64 {
@@ -627,7 +685,7 @@ void micro_bench() {
       }
    });
 
-   // Division is expensive; use fewer iterations.
+   // General division (mostly slow path: random 256-bit divisors)
    constexpr int Nd = 2000;
    const auto div_us = time_it_us([&] {
       for (int i = 0; i < Nd; ++i) {
@@ -637,14 +695,54 @@ void micro_bench() {
       }
    });
 
+   // Fast path: small 64-bit divisor
+   constexpr int Nd_small = 20000;
+   const uint256 d_small{97};
+
+   const auto div_small_us = time_it_us([&] {
+      uint256 t = a;
+      uint256 acc2{0};
+      for (int i = 0; i < Nd_small; ++i) {
+         t = t / d_small;
+         acc2 ^= t;
+         t += uint256{1};
+      }
+      if (!acc2.is_zero()) {
+         // keep
+      }
+   });
+
+   // Fast path: power-of-two divisor
+   constexpr int Nd_pow2 = 20000;
+   const uint256 d_pow2 = pow2(137);
+
+   const auto div_pow2_us = time_it_us([&] {
+      uint256 t = a;
+      uint256 acc3{0};
+      for (int i = 0; i < Nd_pow2; ++i) {
+         t = t / d_pow2;
+         acc3 ^= t;
+         t += uint256{1};
+      }
+      if (!acc3.is_zero()) {
+         // keep
+      }
+   });
+
    // Prevent “optimized away”.
    if (!acc.is_zero()) {
       // do nothing
    }
 
-   std::cout << "  add/xor  : " << add_us << " us for " << N << " iterations\n";
-   std::cout << "  mul/xor  : " << mul_us << " us for " << N << " iterations\n";
-   std::cout << "  div/xor  : " << div_us << " us for " << Nd
+   std::cout << "  add/xor        : " << add_us << " us for " << N
+             << " iterations\n";
+   std::cout << "  mul/xor        : " << mul_us << " us for " << N
+             << " iterations\n";
+   std::cout << "  div/xor        : " << div_us << " us for " << Nd
+             << " iterations\n";
+   std::cout << "  div by 97      : " << div_small_us << " us for " << Nd_small
+             << " iterations\n";
+   std::cout << "  div by 2^137   : " << div_pow2_us << " us for " << Nd_pow2
              << " iterations\n";
 }
 
@@ -661,6 +759,7 @@ int main() {
 
    test_properties_random();
    test_vs_u64_random();
+   test_bit_queries();
 
    demo();
    micro_bench();

@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -39,7 +40,7 @@ namespace u256 {
 struct uint256 final {
    using limb_type = std::uint64_t;
    static constexpr int limb_count = 4;
-   static constexpr int bit_width = 256;
+   static constexpr int bit_width_v = 256;
 
    limb_type w[limb_count]{}; // little-endian limbs
 
@@ -172,7 +173,7 @@ struct uint256 final {
    }
 
    constexpr uint256& operator<<=(unsigned s) noexcept {
-      if (s >= bit_width) {
+      if (s >= bit_width_v) {
          *this = uint256{};
          return *this;
       }
@@ -196,7 +197,7 @@ struct uint256 final {
    }
 
    constexpr uint256& operator>>=(unsigned s) noexcept {
-      if (s >= bit_width) {
+      if (s >= bit_width_v) {
          *this = uint256{};
          return *this;
       }
@@ -441,6 +442,34 @@ struct uint256 final {
       return x;
    }
 
+   [[nodiscard]] static constexpr bool fits_u64(const uint256& x) noexcept {
+      return x.w[1] == 0 && x.w[2] == 0 && x.w[3] == 0;
+   }
+
+   [[nodiscard]] constexpr bool
+   is_power_of_two_and_ctz(unsigned& k) const noexcept {
+      // Returns true iff *this is a power of two; sets k = index of the single
+      // set bit.
+      if (is_zero()) return false;
+
+      int nonzero = 0;
+      unsigned limb_index = 0;
+      limb_type v = 0;
+
+      for (unsigned i = 0; i < limb_count; ++i) {
+         if (w[i] == 0) continue;
+
+         if (++nonzero > 1) return false;
+         limb_index = i;
+         v = w[i];
+      }
+
+      if (!std::has_single_bit(v)) return false;
+
+      k = limb_index * 64u + static_cast<unsigned>(std::countr_zero(v));
+      return true;
+   }
+
    // Divide a 256-bit value by a 64-bit divisor. Returns quotient; sets
    // remainder.
    static constexpr uint256 divmod_u64(const uint256& n, limb_type d,
@@ -534,13 +563,33 @@ struct uint256 final {
       return *this = (*this * b);
    }
 
-   // --- division/modulo (long division in bits; correct, predictable, not
-   // fancy) ---
-   friend constexpr uint256 operator/(const uint256& n,
-                                      const uint256& d) noexcept {
+   // --- division/modulo ---
+   // divmod() computes quotient and remainder together, enabling shared work.
+   [[nodiscard]] friend constexpr std::pair<uint256, uint256>
+   divmod(const uint256& n, const uint256& d) noexcept {
+      // Benign behavior for d==0 (native is UB; choose predictable).
+      if (d.is_zero()) return {uint256{}, uint256{}};
+
+      // Fast path: divisor fits in 64 bits.
+      if (fits_u64(d)) {
+         limb_type rem64 = 0;
+         const uint256 q = divmod_u64(n, d.w[0], rem64);
+         return {q, uint256{rem64}};
+      }
+
+      // Fast path: divisor is power of two => q = n >> k, r = n & (d-1)
+      {
+         unsigned k = 0;
+         if (d.is_power_of_two_and_ctz(k)) {
+            const uint256 q = (k >= bit_width_v) ? uint256{} : (n >> k);
+            const uint256 r = n & (d - uint256{1});
+            return {q, r};
+         }
+      }
+
+      // Fallback: bitwise long division (correct, predictable).
       uint256 q{}, r{};
-      if (d.is_zero()) return q; // like UB in native; choose benign result
-      for (int i = bit_width - 1; i >= 0; --i) {
+      for (int i = bit_width_v - 1; i >= 0; --i) {
          r = shl1(r);
          if (n.get_bit(static_cast<unsigned>(i))) r.w[0] |= 1u;
          if (r >= d) {
@@ -548,29 +597,86 @@ struct uint256 final {
             q.set_bit(static_cast<unsigned>(i));
          }
       }
-      return q;
+      return {q, r};
+   }
+
+   friend constexpr uint256 operator/(const uint256& n,
+                                      const uint256& d) noexcept {
+      return divmod(n, d).first;
    }
 
    friend constexpr uint256 operator%(const uint256& n,
                                       const uint256& d) noexcept {
-      uint256 q{}, r{};
-      if (d.is_zero()) return r; // benign
-      for (int i = bit_width - 1; i >= 0; --i) {
-         r = shl1(r);
-         if (n.get_bit(static_cast<unsigned>(i))) r.w[0] |= 1u;
-         if (r >= d) {
-            r -= d;
-            q.set_bit(static_cast<unsigned>(i));
-         }
-      }
-      return r;
+      return divmod(n, d).second;
    }
 
    constexpr uint256& operator/=(const uint256& d) noexcept {
-      return *this = (*this / d);
+      *this = divmod(*this, d).first;
+      return *this;
    }
+
    constexpr uint256& operator%=(const uint256& d) noexcept {
-      return *this = (*this % d);
+      *this = divmod(*this, d).second;
+      return *this;
+   }
+
+   [[nodiscard]] constexpr uint32_t popcount() const noexcept {
+      return static_cast<int>(std::popcount(w[0]) + std::popcount(w[1]) +
+                              std::popcount(w[2]) + std::popcount(w[3]));
+   }
+
+   [[nodiscard]] constexpr uint32_t countl_zero() const noexcept {
+      for (int i = limb_count - 1; i >= 0; --i) {
+         const limb_type v = w[i];
+         if (v != 0) {
+            const int leading = static_cast<int>(std::countl_zero(v));
+            return (limb_count - 1 - i) * 64 + leading;
+         }
+      }
+      return bit_width_v;
+   }
+
+   [[nodiscard]] constexpr uint32_t bit_width() const noexcept {
+      for (int i = limb_count - 1; i >= 0; --i) {
+         const limb_type v = w[i];
+         if (v != 0) {
+            // width within this limb in [1,64]
+            const int limb_w = static_cast<int>(std::bit_width(v));
+            return i * 64 + limb_w;
+         }
+      }
+      return 0;
+   }
+
+   [[nodiscard]] constexpr uint32_t countr_zero() const noexcept {
+      if (is_zero()) return bit_width_v;
+
+      for (unsigned limb = 0; limb < limb_count; ++limb) {
+         const limb_type v = w[limb];
+         if (v != 0) {
+            return static_cast<int>(limb * 64u +
+                                    static_cast<unsigned>(std::countr_zero(v)));
+         }
+      }
+      return bit_width_v; // unreachable
+   }
+
+   [[nodiscard]] constexpr int msb_index() const noexcept {
+      // returns -1 for 0, else index in [0,255]
+      const int bw = bit_width();
+      return (bw == 0) ? -1 : (bw - 1);
+   }
+
+   [[nodiscard]] constexpr bool has_single_bit() const noexcept {
+      int nonzero = 0;
+      limb_type v = 0;
+      for (int i = 0; i < limb_count; ++i) {
+         if (w[i] != 0) {
+            if (++nonzero > 1) return false;
+            v = w[i];
+         }
+      }
+      return (nonzero == 1) && std::has_single_bit(v);
    }
 
    // --- stream I/O helpers ---
