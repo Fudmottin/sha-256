@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <iostream>
 #include <limits>
+#include <locale>
 #include <sstream>
 #include <string>
 
@@ -340,7 +341,8 @@ void test_bit_queries() {
 
    // mixed bits: build using public ops only
    {
-      const uint256 x = (uint256{1} << 0) | (uint256{1} << 5) | (uint256{1} << 200);
+      const uint256 x =
+          (uint256{1} << 0) | (uint256{1} << 5) | (uint256{1} << 200);
 
       assert(x.popcount() == 3u);
       assert(x.countr_zero() == 0u);
@@ -647,6 +649,77 @@ void demo() {
    }
 }
 
+// Function to expand bitcoin compact target format to uint256
+uint256 expand_compact_target(uint32_t compact) {
+   uint32_t exponent = (compact >> 24) & 0xff;
+   uint32_t coefficient = compact & 0x007fffff;
+
+   uint256 target;
+   if (exponent <= 3) {
+      target = coefficient >> (8 * (3 - exponent));
+   } else {
+      target = uint256(coefficient) * (uint256(1) << (8 * (exponent - 3)));
+   }
+   return target;
+}
+
+std::string trim_trailing_zeros(std::string s) {
+   const auto pos = s.find('.');
+   if (pos == std::string::npos) return s;
+
+   // Remove trailing zeros
+   while (!s.empty() && s.back() == '0') {
+      s.pop_back();
+   }
+   // Remove trailing decimal point if needed
+   if (!s.empty() && s.back() == '.') {
+      s.pop_back();
+   }
+   return s;
+}
+
+void bitcoin_sha256() {
+   print_banner("Bitcoin/SHA-256 Demo");
+
+   using namespace u256::literals;
+
+   uint32_t initial_compact_target{0x1d00ffffu};
+   uint32_t compact_target{0x1701ebf2u};
+   uint256 initial_target = expand_compact_target(initial_compact_target);
+   uint256 target = expand_compact_target(compact_target);
+   long double difficulty = static_cast<long double>(initial_target) /
+                            static_cast<long double>(target);
+   uint256 block_hash{
+       "0x00000000000000000000edc8c459660bd1962f095703a754d23e81cd68f4551e"_u256};
+   bool block_hash_lt_target{block_hash < target};
+   std::string lt_target{block_hash_lt_target ? "true" : "false"};
+
+   {
+      ios_flags_guard g(std::cout);
+      std::cout << std::hex
+                << "  Initial Compact Target: " << initial_compact_target
+                << "\n"
+                << "  Compact Target: " << compact_target << "\n";
+   }
+   std::cout << "  Initial Target: " << initial_target.to_hex_be_fixed() << "\n"
+             << "  Target        : " << target.to_hex_be_fixed() << "\n"
+             << "  Block Hash    : " << block_hash.to_hex_be_fixed() << "\n"
+             << "  Block Hash Less Than Target: " << lt_target << "\n\n";
+
+   {
+      ios_flags_guard g(std::cout);
+
+      std::ostringstream oss;
+      oss.imbue(std::locale(""));
+      oss << std::fixed
+          << std::setprecision(std::numeric_limits<long double>::digits10)
+          << difficulty;
+
+      std::cout << "  Difficulty    : " << trim_trailing_zeros(oss.str())
+                << "\n\n";
+   }
+}
+
 template<class F>
 std::uint64_t time_it_us(F&& f) {
    using clock = std::chrono::steady_clock;
@@ -762,6 +835,7 @@ int main() {
    test_bit_queries();
 
    demo();
+   bitcoin_sha256();
    micro_bench();
 
    std::cout << "\nAll tests passed.\n";

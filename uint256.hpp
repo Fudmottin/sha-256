@@ -1,4 +1,3 @@
-#pragma once
 // uint256.hpp - header-only 256-bit unsigned integer for C++20/23
 //
 // - Trivially copyable, standard layout
@@ -12,9 +11,12 @@
 // division by uint64.
 //   Clang/GCC support it. If you need MSVC, add a _umul128/_udiv128 path.
 
+#pragma once
+
 #include <algorithm>
 #include <array>
 #include <bit>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -73,6 +75,22 @@ struct uint256 final {
 
    // Narrowing conversions (explicit, like good taste).
    explicit constexpr operator std::uint64_t() const noexcept { return w[0]; }
+
+   // Floating conversions (explicit; magnitude preserved, precision limited by
+   // FP).
+   explicit operator long double() const noexcept {
+      // Interpret limbs as an unsigned 256-bit integer:
+      // value = (((w3)*2^64 + w2)*2^64 + w1)*2^64 + w0
+      long double v = 0.0L;
+      for (int i = limb_count - 1; i >= 0; --i) {
+         v = std::ldexp(v, 64);               // v *= 2^64
+         v += static_cast<long double>(w[i]); // add next 64-bit chunk
+      }
+      return v;
+   }
+   explicit operator double() const noexcept {
+      return static_cast<double>(static_cast<long double>(*this));
+   }
 
    // Access for easy interop (e.g., std::bitset building elsewhere).
    [[nodiscard]] constexpr limb_type* data() noexcept { return w; }
