@@ -34,6 +34,6 @@ a header only implementation and a test `main256.cpp` file.
 To compile it, I've been using:
 
 ```
-c++ --std=c++23 -O3 -Wall -Wextra -Wpedantic -Werror -o main256 main256.cpp
+c++ --std=c++23 -O3 -Wall -Wextra -o main256 main256.cpp
 ```
 

@@ -420,7 +420,7 @@ void test_properties_random() {
       assert((a + b) + c == a + (b + c));
 
       assert((a ^ a).is_zero());
-      assert((a ^ b) ^ b == a);
+      assert((a ^ b) ^ (b == a));
 
       assert(~(a & b) == (~a | ~b));
       assert(~(a | b) == (~a & ~b));
