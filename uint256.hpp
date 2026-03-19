@@ -33,8 +33,8 @@
 
 #if !defined(__SIZEOF_INT128__)
 static_assert(
-    false,
-    "uint256 requires compiler support for unsigned __int128 (Clang/GCC).");
+   false,
+   "uint256 requires compiler support for unsigned __int128 (Clang/GCC).");
 #endif
 
 namespace u256 {
@@ -60,7 +60,7 @@ struct uint256 final {
                (sizeof(UInt) <= sizeof(std::uint64_t)))
    // NOLINTNEXTLINE(google-explicit-constructor)
    constexpr uint256(UInt x) noexcept
-       : uint256(static_cast<std::uint64_t>(x)) {}
+      : uint256(static_cast<std::uint64_t>(x)) {}
 
    // Construct explicitly from signed integrals (mod 2^256, like casting to an
    // unsigned type).
@@ -195,19 +195,22 @@ struct uint256 final {
          *this = uint256{};
          return *this;
       }
-      const unsigned limb_shift = s / 64;
-      const unsigned bit_shift = s % 64;
+      const unsigned limb_shift = s / 64U;
+      const unsigned bit_shift = s % 64U;
+      const int limb_shift_i = static_cast<int>(limb_shift);
 
-      if (limb_shift != 0) {
+      if (limb_shift != 0U) {
          for (int i = limb_count - 1; i >= 0; --i) {
-            w[i] = (i >= static_cast<int>(limb_shift)) ? w[i - limb_shift] : 0;
+            w[i] = (i >= limb_shift_i)
+                      ? w[static_cast<std::size_t>(i - limb_shift_i)]
+                      : limb_type{0};
          }
       }
       if (bit_shift != 0) {
          for (int i = limb_count - 1; i >= 0; --i) {
             const limb_type hi = w[i] << bit_shift;
             const limb_type carry =
-                (i > 0) ? (w[i - 1] >> (64 - bit_shift)) : 0;
+               (i > 0) ? (w[i - 1] >> (64 - bit_shift)) : 0;
             w[i] = hi | carry;
          }
       }
@@ -219,21 +222,21 @@ struct uint256 final {
          *this = uint256{};
          return *this;
       }
-      const unsigned limb_shift = s / 64;
-      const unsigned bit_shift = s % 64;
+      const unsigned limb_shift = s / 64U;
+      const unsigned bit_shift = s % 64U;
 
-      if (limb_shift != 0) {
-         for (int i = 0; i < limb_count; ++i) {
+      if (limb_shift != 0U) {
+         for (unsigned i = 0; i < static_cast<unsigned>(limb_count); ++i) {
             w[i] = (i + limb_shift < static_cast<unsigned>(limb_count))
-                       ? w[i + limb_shift]
-                       : 0;
+                      ? w[i + limb_shift]
+                      : limb_type{0};
          }
       }
       if (bit_shift != 0) {
          for (int i = 0; i < limb_count; ++i) {
             const limb_type lo = w[i] >> bit_shift;
             const limb_type carry =
-                (i + 1 < limb_count) ? (w[i + 1] << (64 - bit_shift)) : 0;
+               (i + 1 < limb_count) ? (w[i + 1] << (64 - bit_shift)) : 0;
             w[i] = lo | carry;
          }
       }
@@ -565,9 +568,9 @@ struct uint256 final {
          unsigned __int128 carry = 0;
          for (int j = 0; j + i < limb_count; ++j) {
             const unsigned __int128 cur =
-                static_cast<unsigned __int128>(a.w[i]) *
-                    static_cast<unsigned __int128>(b.w[j]) +
-                static_cast<unsigned __int128>(r.w[i + j]) + carry;
+               static_cast<unsigned __int128>(a.w[i]) *
+                  static_cast<unsigned __int128>(b.w[j]) +
+               static_cast<unsigned __int128>(r.w[i + j]) + carry;
             r.w[i + j] = static_cast<limb_type>(cur);
             carry = cur >> 64;
          }
@@ -638,51 +641,55 @@ struct uint256 final {
       return *this;
    }
 
-   [[nodiscard]] constexpr uint32_t popcount() const noexcept {
-      return static_cast<int>(std::popcount(w[0]) + std::popcount(w[1]) +
-                              std::popcount(w[2]) + std::popcount(w[3]));
+   [[nodiscard]] constexpr std::uint32_t popcount() const noexcept {
+      return static_cast<std::uint32_t>(
+         std::popcount(w[0]) + std::popcount(w[1]) + std::popcount(w[2]) +
+         std::popcount(w[3]));
    }
 
-   [[nodiscard]] constexpr uint32_t countl_zero() const noexcept {
+   [[nodiscard]] constexpr std::uint32_t countl_zero() const noexcept {
       for (int i = limb_count - 1; i >= 0; --i) {
          const limb_type v = w[i];
          if (v != 0) {
-            const int leading = static_cast<int>(std::countl_zero(v));
-            return (limb_count - 1 - i) * 64 + leading;
+            const std::uint32_t leading =
+               static_cast<std::uint32_t>(std::countl_zero(v));
+            return static_cast<std::uint32_t>((limb_count - 1 - i) * 64) +
+                   leading;
          }
       }
-      return bit_width_v;
+      return static_cast<std::uint32_t>(bit_width_v);
    }
 
-   [[nodiscard]] constexpr uint32_t bit_width() const noexcept {
+   [[nodiscard]] constexpr std::uint32_t bit_width() const noexcept {
       for (int i = limb_count - 1; i >= 0; --i) {
          const limb_type v = w[i];
          if (v != 0) {
-            // width within this limb in [1,64]
-            const int limb_w = static_cast<int>(std::bit_width(v));
-            return i * 64 + limb_w;
+            const std::uint32_t limb_w =
+               static_cast<std::uint32_t>(std::bit_width(v));
+            return static_cast<std::uint32_t>(i * 64) + limb_w;
          }
       }
-      return 0;
+      return 0U;
    }
 
-   [[nodiscard]] constexpr uint32_t countr_zero() const noexcept {
-      if (is_zero()) return bit_width_v;
+   [[nodiscard]] constexpr std::uint32_t countr_zero() const noexcept {
+      if (is_zero()) return static_cast<std::uint32_t>(bit_width_v);
 
-      for (unsigned limb = 0; limb < limb_count; ++limb) {
+      for (unsigned limb = 0; limb < static_cast<unsigned>(limb_count);
+           ++limb) {
          const limb_type v = w[limb];
          if (v != 0) {
-            return static_cast<int>(limb * 64u +
-                                    static_cast<unsigned>(std::countr_zero(v)));
+            return static_cast<std::uint32_t>(
+               limb * 64U + static_cast<unsigned>(std::countr_zero(v)));
          }
       }
-      return bit_width_v; // unreachable
+      return static_cast<std::uint32_t>(bit_width_v); // unreachable
    }
 
    [[nodiscard]] constexpr int msb_index() const noexcept {
       // returns -1 for 0, else index in [0,255]
-      const int bw = bit_width();
-      return (bw == 0) ? -1 : (bw - 1);
+      const std::uint32_t bw = bit_width();
+      return (bw == 0U) ? -1 : static_cast<int>(bw - 1U);
    }
 
    [[nodiscard]] constexpr bool has_single_bit() const noexcept {
@@ -741,14 +748,14 @@ struct uint256 final {
             const auto limb = x.w[i];
             for (int nib = 15; nib >= 0; --nib) {
                const unsigned v =
-                   static_cast<unsigned>((limb >> (nib * 4)) & 0xFu);
+                  static_cast<unsigned>((limb >> (nib * 4)) & 0xFu);
                if (!started) {
                   if (v == 0 && (i != 0 || nib != 0)) continue;
                   started = true;
                }
                const char d =
-                   (v < 10) ? static_cast<char>('0' + v)
-                            : static_cast<char>((upper ? 'A' : 'a') + (v - 10));
+                  (v < 10) ? static_cast<char>('0' + v)
+                           : static_cast<char>((upper ? 'A' : 'a') + (v - 10));
                out.push_back(d);
             }
          }
@@ -891,7 +898,8 @@ constexpr int digit_val_(char c) noexcept {
    return -1;
 }
 
-constexpr u256::uint256 operator"" _u256(unsigned long long v) noexcept {
+constexpr u256::uint256
+operator"" _u256(unsigned long long v) noexcept {
    return u256::uint256{static_cast<std::uint64_t>(v)};
 }
 
@@ -930,7 +938,9 @@ class numeric_limits<u256::uint256> {
  public:
    static constexpr bool is_specialized = true;
 
-   static constexpr u256::uint256 min() noexcept { return u256::uint256{0}; }
+   static constexpr u256::uint256 min() noexcept {
+      return u256::uint256{0};
+   }
 
    static constexpr u256::uint256 max() noexcept {
       u256::uint256 x{};
